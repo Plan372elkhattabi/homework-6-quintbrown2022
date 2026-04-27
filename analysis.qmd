@@ -1,8 +1,93 @@
 ---
-title: PLAN 372
-author: Your Name
+title: PLAN 372 - Homework 6
+author: Quinton Brown
 ---
 
-Place your analysis code in this file; you must not rename it, though you may delete these instructions. Please update the block above with the name of the assignment and with your name.When you push your code to github, it will automatically be rendered for grading. You can see whether the automatic rendering worked in the "Actions" tab of the github repository.
+```{r}
+library(tidyverse)
+data <- read_csv("~/Documents/homework-6-quintbrown2022/TS3_Raw_tree_data.csv")
+```
 
-If you use any libraries other than `tidyverse`, `lubridate`, `sf`, `ggplot2`, `here`, `terra`, `ggspatial`, `rJavaEnv`, and `r5r`, add them to the list in the DESCRIPTION file.
+
+
+## Question 1: Sample sizes by state
+
+```{r}
+# Use str_match to create separate columns for city and state
+data[,c("city_name", "state_abbrev")] = str_match(data$City, "^(.*),[:space:]*([:alpha:]+)$")[,2:3]
+# Table of records in each state
+state_treecount = data |>
+  group_by(state_abbrev) |>
+  summarize(Records = n()) |>
+  arrange(desc(Records))
+knitr::kable(state_treecount, caption = "Number of Tree Records by State")
+```
+
+As seen in the table, California has the most tree records just above 4000, and Minnesota has the least with 760. The rest of the states included are in the range between 827 and 994 tree records.
+
+
+## Question 2 Cities in NC/SC
+
+```{r}
+# Filter the dataset to only NC and SC
+nc_sc_trees = data |>
+  filter(state_abbrev %in% c("NC", "SC"))
+# Find what cities data was collected from
+cities_collected = nc_sc_trees |>
+  distinct(city_name, state_abbrev)|>
+  arrange(state_abbrev, city_name)
+knitr::kable(cities_collected, caption = "Cities in NC and SC Data")
+```
+
+The cities from which data was collected in NC and SC were Charlotte and Charleston.
+
+## Question 3 Genera and Species
+
+```{r}
+# Use str_match to find the genus from the Scientific Name
+nc_sc_trees = mutate(nc_sc_trees, genus = str_match(ScientificName, "^([:alpha:]+)")[,2])
+# Calculate average crown diameter by genus
+genus_canopy = nc_sc_trees |>
+  group_by(genus) |>
+  summarize(
+    Avg_Crown_Diameter = mean(`AvgCdia (m)`, na.rm = TRUE),
+    Sample_Size = n()
+  ) |>
+  arrange(desc(Avg_Crown_Diameter))
+head(genus_canopy)
+```
+
+The genus of trees with the largest average crown diameter size is Quercus, with an average crown diameter of 13.6.
+
+
+## Question 4 Tree Age
+
+```{r}
+# Calculate average age for each genus
+genus_age = nc_sc_trees |>
+  group_by(genus) |>
+  summarize(
+    Avg_Age_years = mean(Age, na.rm = TRUE),
+    Avg_Crown_Diameter_m = mean(`AvgCdia (m)`, na.rm = TRUE),
+    Sample_Size = n()
+  ) |>
+  arrange(desc(Avg_Age_years))
+head(genus_age)
+# Plot relationship between average age and average crown diameter
+ggplot(genus_age, aes(x = Avg_Age_years, y = Avg_Crown_Diameter_m)) +
+  geom_point(alpha = 0.7, color = "blue") +
+  theme_minimal() +
+  labs(
+    title = "Average Age vs Average Crown Diameter by Genus",
+    x = "Average Age (years)",
+    y = "Average Crown Diameter (m)"
+  )
+```
+
+It appears that, via the table and graph, there are differences in the average age of the different generas of trees. For example, Quercus is the oldest with an average age of 35.6 years while Sabal has an average age of 26.1 years. The graph shows that as average age increases, it seems average crown diameter does as well. This explains the result from question 3, as Quercus is the oldest genera of tree in the group and thus has the largest crown diameter. 
+
+
+
+## AI Reflection
+In this assignment, I used ChatGPT to help resolve an issue I had with reading in the csv file. I was struggling to find the right path as the data was in a subfolder within the original folder. This helped support my learning because it was taking me a long time to try to fix it and having the assistance allowed me to finally extract the data I needed for this assignment. 
+
